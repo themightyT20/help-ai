@@ -82,4 +82,4 @@ You can add API keys either directly in your Render environment variables or thr
 1. Clone the repository
 2. Install dependencies: `npm install`
 3. Set up environment variables in `.env` file
-4. Start the development server: `npm run dev`
+4. Start the development server: `npm run dev`# help-ai

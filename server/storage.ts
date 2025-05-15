@@ -84,10 +84,7 @@ export class DatabaseStorage implements IStorage {
         });
       } catch (error) {
         console.error('Failed to initialize PostgreSQL session store, falling back to memory store', error);
-        const MemorySessionStore = MemoryStore(session);
-        this.sessionStore = new MemorySessionStore({
-          checkPeriod: 86400000 // Prune expired entries every 24h
-        });
+        // Already initialized with memory store at the beginning of constructor
       }
     }
   }

@@ -1,0 +1,28 @@
+# Cloudflare Pages configuration
+name = "ai-chat-app"
+compatibility_date = "2023-12-01"
+
+# Build configuration
+[build]
+command = "chmod +x ./cloudflare-deploy.sh && ./cloudflare-deploy.sh"
+output_dir = "dist/public"
+cwd = "."
+
+# Binding environment variables
+[vars]
+NODE_ENV = "production"
+
+# Define KV namespace (optional)
+# [[kv_namespaces]]
+# binding = "SESSION_STORE"
+# id = "your-kv-namespace-id"
+
+# D1 Database - For SQL (optional alternative to external database)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "chat_app_db"
+# database_id = "your-d1-database-id"
+
+# Functions configuration 
+[site]
+bucket = "./dist/public"

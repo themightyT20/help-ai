@@ -32,8 +32,18 @@ export async function handleRequest(request: Request, env: Record<string, string
     let responseStatus = 200;
     let responseBody = '';
     
+    // Define a custom WebResponse that mimics Express Response
+    type WebResponse = {
+      setHeader(key: string, value: string): WebResponse;
+      getHeader(key: string): string | undefined;
+      status(status: number): WebResponse;
+      send(body: any): void;
+      json(body: any): void;
+      end(): void;
+    };
+    
     // Mock response methods
-    const res = {
+    const res: WebResponse = {
       setHeader: (key: string, value: string) => {
         responseHeaders.set(key, value);
         return res;
