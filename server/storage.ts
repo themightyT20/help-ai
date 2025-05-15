@@ -1,5 +1,5 @@
 import session from "express-session";
-import { db, pool } from './db';
+import { db } from './db';
 import connectPg from 'connect-pg-simple';
 import { and, desc, eq } from 'drizzle-orm';
 import * as schema from '@shared/schema';
@@ -7,6 +7,7 @@ import {
   User, InsertUser, Conversation, InsertConversation, 
   Message, InsertMessage, ApiKey, InsertApiKey 
 } from "@shared/schema";
+import MemoryStore from 'memorystore';
 
 export interface IStorage {
   // User operations
@@ -43,11 +44,40 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    const PostgresSessionStore = connectPg(session);
-    this.sessionStore = new PostgresSessionStore({ 
-      pool, 
-      createTableIfMissing: true 
-    });
+    // Determine if we're in a serverless environment
+    const isServerless = process.env.CF_PAGES === 'true' || process.env.NODE_ENV === 'cloudflare';
+    
+    if (isServerless) {
+      // For serverless environments, use in-memory session store with expiration
+      const MemorySessionStore = MemoryStore(session);
+      this.sessionStore = new MemorySessionStore({
+        checkPeriod: 86400000 // Prune expired entries every 24h
+      });
+    } else {
+      // For traditional environments, use PostgreSQL session store
+      try {
+        const PostgresSessionStore = connectPg(session);
+        // Get Pool from process environment - we need to import pg as a direct dependency
+        const { Pool } = require('pg');
+        const sessionPool = new Pool({
+          connectionString: process.env.DATABASE_URL,
+          ssl: {
+            rejectUnauthorized: false
+          }
+        });
+        
+        this.sessionStore = new PostgresSessionStore({ 
+          pool: sessionPool, 
+          createTableIfMissing: true 
+        });
+      } catch (error) {
+        console.error('Failed to initialize PostgreSQL session store, falling back to memory store', error);
+        const MemorySessionStore = MemoryStore(session);
+        this.sessionStore = new MemorySessionStore({
+          checkPeriod: 86400000 // Prune expired entries every 24h
+        });
+      }
+    }
   }
 
   // User operations
