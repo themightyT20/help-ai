@@ -1,5 +1,5 @@
 # Cloudflare Pages configuration
-name = "ai-chat-app"
+name = "help-ai-beta"
 compatibility_date = "2023-12-01"
 
 # Build configuration
