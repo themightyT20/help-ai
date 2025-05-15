@@ -7,7 +7,10 @@ import {
   User, InsertUser, Conversation, InsertConversation, 
   Message, InsertMessage, ApiKey, InsertApiKey 
 } from "@shared/schema";
-import MemoryStore from 'memorystore';
+import memoryStoreModule from 'memorystore';
+
+// Create the MemoryStore constructor
+const MemoryStore = memoryStoreModule(session);
 
 export interface IStorage {
   // User operations
@@ -41,34 +44,43 @@ export interface IStorage {
 
 // Database storage implementation using Drizzle ORM
 export class DatabaseStorage implements IStorage {
+  // Initialize with a default memory store
   sessionStore: session.Store;
 
   constructor() {
+    // Default to memory store
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // Prune expired entries every 24h
+    });
+    
     // Determine if we're in a serverless environment
     const isServerless = process.env.CF_PAGES === 'true' || process.env.NODE_ENV === 'cloudflare';
     
     if (isServerless) {
-      // For serverless environments, use in-memory session store with expiration
-      const MemorySessionStore = MemoryStore(session);
-      this.sessionStore = new MemorySessionStore({
-        checkPeriod: 86400000 // Prune expired entries every 24h
-      });
+      // For serverless, we already initialized memory store
+      // No need to do anything extra
     } else {
       // For traditional environments, use PostgreSQL session store
       try {
         const PostgresSessionStore = connectPg(session);
-        // Get Pool from process environment - we need to import pg as a direct dependency
-        const { Pool } = require('pg');
-        const sessionPool = new Pool({
-          connectionString: process.env.DATABASE_URL,
-          ssl: {
-            rejectUnauthorized: false
-          }
-        });
-        
-        this.sessionStore = new PostgresSessionStore({ 
-          pool: sessionPool, 
-          createTableIfMissing: true 
+        // Import Pool using dynamic import for ESM compatibility
+        import('pg').then(pg => {
+          const sessionPool = new pg.Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: {
+              rejectUnauthorized: false
+            }
+          });
+          
+          this.sessionStore = new PostgresSessionStore({ 
+            pool: sessionPool, 
+            createTableIfMissing: true 
+          });
+        }).catch(err => {
+          console.error('Failed to import pg module:', err);
+          this.sessionStore = new MemoryStore({
+            checkPeriod: 86400000 // Prune expired entries every 24h
+          });
         });
       } catch (error) {
         console.error('Failed to initialize PostgreSQL session store, falling back to memory store', error);

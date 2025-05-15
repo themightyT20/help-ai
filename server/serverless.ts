@@ -22,22 +22,23 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
  * Main serverless handler function for Cloudflare Pages Functions
  * This processes the incoming request and generates a response using Express
  */
-export async function handleRequest(request: Request, env: any) {
+export async function handleRequest(request: Request, env: Record<string, string>) {
   // Set environment variables from Cloudflare
   process.env = { ...process.env, ...env };
   
-  return new Promise((resolve) => {
+  return new Promise<Response>((resolve) => {
     // Create a response object
-    let responseHeaders = {};
+    const responseHeaders: Headers = new Headers();
     let responseStatus = 200;
     let responseBody = '';
     
     // Mock response methods
     const res = {
       setHeader: (key: string, value: string) => {
-        responseHeaders[key] = value;
+        responseHeaders.set(key, value);
+        return res;
       },
-      getHeader: (key: string) => responseHeaders[key],
+      getHeader: (key: string) => responseHeaders.get(key) || undefined,
       status: (status: number) => {
         responseStatus = status;
         return res;
@@ -51,7 +52,7 @@ export async function handleRequest(request: Request, env: any) {
       },
       json: (body: any) => {
         responseBody = JSON.stringify(body);
-        responseHeaders['Content-Type'] = 'application/json';
+        responseHeaders.set('Content-Type', 'application/json');
         resolve(new Response(responseBody, {
           status: responseStatus,
           headers: responseHeaders
